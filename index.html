@@ -1,0 +1,87 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AWA TOUR — расписание экскурсий</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#173b3c;background:#f3f7f6}*{box-sizing:border-box}body{margin:0}header{background:#07575b;color:white;padding:20px}header h1{margin:0;font-size:25px}header small{opacity:.85}main{max-width:980px;margin:auto;padding:16px}.notice{background:#fff4db;padding:12px;border-radius:10px;font-size:13px;margin:12px 0}.tabs,.toolbar,.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button,input,select{font:inherit;border:1px solid #c8d9d6;border-radius:9px;padding:10px;background:white;min-width:0}button{cursor:pointer}button.primary,.tabs button.active{background:#08777a;color:white;border-color:#08777a}.toolbar>*{flex:1;min-width:145px}.day{margin:22px 0}.day h2{font-size:18px;border-bottom:1px solid #d5e2df;padding-bottom:8px}.entry{background:white;border-radius:12px;padding:13px 15px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;box-shadow:0 1px 4px #123b3c10}.entry small{display:block;color:#718986;margin-top:4px}.status{font-weight:700;white-space:nowrap}.green{color:#158258}.orange{color:#b06a00}.red{color:#b82e38}.gray{color:#748784}.edit{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.edit input{width:82px;padding:8px}.edit button{padding:8px}.danger{color:#a12632}.foot{color:#657d79;font-size:13px;padding:20px 0}.muted{color:#708783}.hide{display:none}@media(max-width:600px){.entry{align-items:flex-start;flex-direction:column}.edit{justify-content:flex-start}.toolbar>*{min-width:100%}}
+</style></head><body><header><h1>AWA TOUR</h1><small>Расписание экскурсий и наличие мест · демоверсия</small></header><main>
+<div class="notice">Локальный прототип: изменения сохраняются только в этом браузере. Админка здесь без защиты, общей базы данных и синхронизации пока нет. Цифры мест демонстрационные, если вы их введёте.</div>
+<div class="tabs"><button id="agent" class="active">Для агента</button><button id="admin">Демо админки</button></div>
+<div class="toolbar"><input id="search" placeholder="Поиск экскурсии"><select id="group"><option value="">Все категории</option></select><select id="tour"><option value="">Все экскурсии</option></select><input id="start" type="date"></div>
+<div class="actions"><button id="week" class="primary">7 дней</button><button id="month">30 дней</button><button id="more">Следующие 7 дней</button></div>
+<div id="adminTools" class="hide"><h3>Настройка вместимости и внеплановых выездов</h3><div class="toolbar"><select id="editTour"></select><input id="editDate" type="date"><input id="total" type="number" min="0" placeholder="Всего мест"><button id="add" class="primary">Добавить выезд</button></div><div class="toolbar"><select id="defaultTour"></select><input id="defaultTotal" type="number" min="0" placeholder="Вместимость по умолчанию"><button id="saveDefault" class="primary">Сохранить вместимость</button></div><small class="muted">Добавление действует только на выбранную дату. Вместимость по умолчанию применяется к будущим регулярным датам, если нет индивидуальной настройки.</small></div>
+<div id="result"></div><div class="foot">Один выезд каждой экскурсии в день. Цвета: зелёный — более 5 мест, оранжевый — 1–5, красный — нет мест или отмена, серый — неизвестно.</div></main>
+<script>
+const tours=[{"id": 1, "name": "Evening Bangkok", "group": "Бангкок", "days": "daily"}, {"id": 2, "name": "Evening Bangkok No Mahanakhon", "group": "Бангкок", "days": "daily"}, {"id": 3, "name": "Sunset Bangkok", "group": "Бангкок", "days": "daily"}, {"id": 4, "name": "Classic Bangkok", "group": "Бангкок", "days": "2,5"}, {"id": 5, "name": "Top Bangkok", "group": "Бангкок", "days": "daily"}, {"id": 6, "name": "Bangkok 2 Day", "group": "Двухдневные", "days": "2,5"}, {"id": 7, "name": "Kwai Classic", "group": "Двухдневные", "days": "daily"}, {"id": 8, "name": "Above the Clouds 2.0", "group": "Двухдневные", "days": "1,4"}, {"id": 9, "name": "Stalker", "group": "Двухдневные", "days": "4,7"}, {"id": 10, "name": "Golden Triangle", "group": "Двухдневные", "days": "3"}, {"id": 11, "name": "5 Islands Snorkeling Tour", "group": "Морские", "days": "3,6"}, {"id": 12, "name": "Pattaya Bay Cruise", "group": "Морские", "days": "2,7"}, {"id": 13, "name": "Ko Talu Pink Island", "group": "Морские", "days": "2,7"}, {"id": 14, "name": "Thai Maldives", "group": "Морские", "days": "request"}, {"id": 15, "name": "Sea Fishing", "group": "Морские", "days": "1,5"}, {"id": 16, "name": "Ko Samet 1 Day", "group": "Морские", "days": "daily"}, {"id": 17, "name": "Ayuttaya 5 Temples", "group": "Авторские", "days": "1,3,6"}, {"id": 18, "name": "Evening Ayuttaya", "group": "Авторские", "days": "2,5"}, {"id": 19, "name": "Kids Adventure", "group": "Авторские", "days": "1,2,4,5,6,7"}, {"id": 20, "name": "Jungle Tour", "group": "Авторские", "days": "daily"}, {"id": 21, "name": "Lost World", "group": "Авторские", "days": "2,4,6"}, {"id": 22, "name": "Searching for Sapphires", "group": "Авторские", "days": "5,6,7"}, {"id": 23, "name": "Thai Express + Monkey River", "group": "Авторские", "days": "2,6"}, {"id": 24, "name": "Amazing Thai", "group": "Авторские", "days": "3,7"}, {"id": 25, "name": "Alpaka Park", "group": "Авторские", "days": "2,6"}, {"id": 26, "name": "Dragon Lair", "group": "Авторские", "days": "2,4,7"}, {"id": 27, "name": "Expedition Pathfinders", "group": "Авторские", "days": "1,3,5"}, {"id": 28, "name": "Secrets of Siam", "group": "Авторские", "days": "1,4"}, {"id": 29, "name": "Amphava", "group": "Авторские", "days": "4,6"}, {"id": 30, "name": "Land of Waterfalls Kao Yai", "group": "Авторские", "days": "2,4,7"}, {"id": 31, "name": "Instagram Tour", "group": "Авторские", "days": "1,5"}, {"id": 32, "name": "Happy Tour", "group": "Авторские", "days": "2,6"}, {"id": 33, "name": "Evening in Old Siam", "group": "Авторские", "days": "3,7"}, {"id": 34, "name": "Power of Life", "group": "Авторские", "days": "2"}, {"id": 35, "name": "Relax Tur", "group": "Авторские", "days": "daily"}, {"id": 36, "name": "5 Miracles", "group": "Авторские", "days": "3,5,7"}, {"id": 37, "name": "Khao Kheo Zoo", "group": "Популярные", "days": "daily"}, {"id": 38, "name": "Khao Kheo VIP", "group": "Популярные", "days": "daily"}, {"id": 39, "name": "Nong Nooch Standard", "group": "Популярные", "days": "daily"}, {"id": 40, "name": "Nong Nooch VIP", "group": "Популярные", "days": "daily"}, {"id": 41, "name": "Discovery 8 in 1", "group": "Популярные", "days": "daily"}, {"id": 42, "name": "Big Discovery", "group": "Популярные", "days": "daily"}, {"id": 43, "name": "Siri Discovery", "group": "Популярные", "days": "1,4"}, {"id": 44, "name": "Thai Safary", "group": "Популярные", "days": "daily"}, {"id": 45, "name": "Wat Yan + Karens + Elephant", "group": "Популярные", "days": "2,4,6"}, {"id": 46, "name": "Wat Yan + Karens + Ritual", "group": "Популярные", "days": "2,4,6"}, {"id": 47, "name": "Ritual", "group": "Популярные", "days": "daily"}, {"id": 48, "name": "Ajan Kob Ayuttaya", "group": "Сак Янт", "days": "request"}, {"id": 49, "name": "Ajan Dam Rayong", "group": "Сак Янт", "days": "request"}, {"id": 50, "name": "Ajan Chalee Pattaya", "group": "Сак Янт", "days": "request"}, {"id": 51, "name": "Sai Keow", "group": "Без гида", "days": "daily"}, {"id": 52, "name": "Had Nang Ram", "group": "Без гида", "days": "daily"}, {"id": 53, "name": "Family Zootour", "group": "Без гида", "days": "2,5"}, {"id": 54, "name": "Dream World", "group": "Без гида", "days": "daily"}, {"id": 55, "name": "Safary World", "group": "Без гида", "days": "3,5"}, {"id": 56, "name": "Fishing Lake", "group": "Без гида", "days": "daily"}, {"id": 57, "name": "Elephant Riding 30 Min", "group": "Без гида", "days": "daily"}, {"id": 58, "name": "Elephant Riding 60 Min", "group": "Без гида", "days": "daily"}, {"id": 59, "name": "Aquaverse Columbia", "group": "Без гида", "days": "1,2,4,5,6,7"}, {"id": 60, "name": "Ramayana", "group": "Без гида", "days": "1,2,4,5,6,7"}, {"id": 61, "name": "Crocodile Farm", "group": "Без гида", "days": "daily"}, {"id": 62, "name": "Sanctuary of Truth", "group": "Без гида", "days": "daily"}, {"id": 63, "name": "Tarzan Flight", "group": "Без гида", "days": "daily"}, {"id": 64, "name": "Baan Sukhawadee", "group": "Без гида", "days": "daily"}, {"id": 65, "name": "X-Show 69", "group": "Вечерние шоу", "days": "daily"}, {"id": 66, "name": "79 Show Kamasutra", "group": "Вечерние шоу", "days": "daily"}, {"id": 67, "name": "89 Show", "group": "Вечерние шоу", "days": "daily"}, {"id": 68, "name": "Big Eye", "group": "Вечерние шоу", "days": "daily"}, {"id": 69, "name": "Colloseum", "group": "Вечерние шоу", "days": "daily"}, {"id": 70, "name": "Alcazar", "group": "Вечерние шоу", "days": "daily"}, {"id": 71, "name": "Tiffany", "group": "Вечерние шоу", "days": "daily"}, {"id": 72, "name": "Thai Boxing", "group": "Вечерние шоу", "days": "daily"}];
+const $=id=>document.getElementById(id), key='awa-tour-demo-v2';
+let store={dates:{},defaults:{}};
+try{let s=JSON.parse(localStorage.getItem(key)||'{}');store={dates:s.dates||{},defaults:s.defaults||{}}}catch(e){}
+const save=()=>localStorage.setItem(key,JSON.stringify(store));
+let admin=false,days=7;
+const pad=n=>String(n).padStart(2,'0'), dateStr=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays=(s,n)=>{let d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return dateStr(d)};
+const fmt=s=>new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+const weekday=s=>(new Date(s+'T12:00:00').getDay()+6)%7+1;
+const recurring=(t,d)=>t.days!=='request'&&(t.days==='daily'||t.days.split(',').includes(String(weekday(d))));
+const k=(t,d)=>t.id+'|'+d;
+const rec=(t,d)=>store.dates[k(t,d)]||{};
+const exists=(t,d)=>{let r=rec(t,d);return r.added===true||recurring(t,d)};
+const total=(t,d)=>rec(t,d).total??store.defaults[t.id]??null;
+const free=(t,d)=>rec(t,d).free??total(t,d);
+const status=(t,d)=>{let r=rec(t,d),v=free(t,d);if(r.cancelled)return ['Отменена','red'];if(v===null)return ['Наличие уточняется','gray'];if(v===0)return ['Нет мест','red'];return [v+' мест',''+(v<=5?'orange':'green')]};
+function opt(sel,items,empty){let old=sel.value;sel.innerHTML='';if(empty)sel.add(new Option(empty,''));items.forEach(t=>sel.add(new Option(t.name,t.id)));if([...sel.options].some(o=>o.value===old))sel.value=old}
+[...new Set(tours.map(t=>t.group))].forEach(g=>$('group').add(new Option(g,g)));
+opt($('editTour'),tours);opt($('defaultTour'),tours);
+$('start').value=dateStr(new Date());$('editDate').value=$('start').value;
+function render(){
+ const group=$('group').value,q=$('search').value.trim().toLowerCase();
+ const subset=tours.filter(t=>(!group||t.group===group)&&t.name.toLowerCase().includes(q));
+ opt($('tour'),subset,'Все экскурсии');
+ const selected=$('tour').value,filtered=subset.filter(t=>!selected||String(t.id)===selected);
+ const start=$('start').value||dateStr(new Date());
+ $('week').classList.toggle('primary',days===7);$('month').classList.toggle('primary',days===30);
+ $('more').classList.toggle('hide',days!==7);
+ $('adminTools').classList.toggle('hide',!admin);
+ $('agent').classList.toggle('active',!admin);$('admin').classList.toggle('active',admin);
+ let output='';
+ for(let i=0;i<days;i++){
+  let d=addDays(start,i),active=filtered.filter(t=>exists(t,d));
+  if(selected&&active.length===0)continue;
+  output+=`<section class="day"><h2>${fmt(d)}</h2>`;
+  if(!active.length)output+='<p class="muted">Выездов по выбранным фильтрам нет</p>';
+  for(let t of active){
+   let s=status(t,d),r=rec(t,d),cap=total(t,d),avail=free(t,d);
+   output+=`<div class="entry"><div><strong>${t.name}</strong><small>${t.group}${r.added?' · внеплановый выезд':''}${admin?' · всего: '+(cap??'не задано'):''}</small></div>`;
+   if(admin)output+=`<div class="edit"><input type="number" min="0" aria-label="Всего мест" placeholder="Всего" value="${cap??''}" data-total="${t.id}|${d}"><input type="number" min="0" aria-label="Свободно" placeholder="Свободно" value="${avail??''}" data-free="${t.id}|${d}"><button data-action="save" data-id="${t.id}" data-date="${d}">Сохранить</button><button class="danger" data-action="cancel" data-id="${t.id}" data-date="${d}">${r.cancelled?'Вернуть':'Отменить'}</button>${r.added?`<button data-action="remove" data-id="${t.id}" data-date="${d}">Удалить</button>`:''}</div>`;
+   else output+=`<span class="status ${s[1]}">${s[0]}</span>`;
+   output+='</div>';
+  }
+  output+='</section>';
+ }
+ $('result').innerHTML=output||'<p class="muted">Выездов по выбранным фильтрам нет.</p>';
+ document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
+  let t=tours.find(x=>x.id===Number(b.dataset.id)),d=b.dataset.date,id=k(t,d),r={...rec(t,d)};
+  if(b.dataset.action==='cancel')r.cancelled=!r.cancelled;
+  if(b.dataset.action==='remove'){delete store.dates[id];save();render();return}
+  if(b.dataset.action==='save'){
+   let a=document.querySelector(`[data-total="${id}"]`).value,f=document.querySelector(`[data-free="${id}"]`).value;
+   if(a===''||f===''||!Number.isInteger(+a)||!Number.isInteger(+f)||+a<0||+f<0||+f>+a){alert('Введите целые числа: 0 ≤ свободно ≤ всего');return}
+   r.total=+a;r.free=+f;
+  }
+  store.dates[id]=r;save();render();
+ });
+}
+$('agent').onclick=()=>{admin=false;render()};$('admin').onclick=()=>{admin=true;render()};
+$('week').onclick=()=>{days=7;render()};$('month').onclick=()=>{days=30;render()};$('more').onclick=()=>{$('start').value=addDays($('start').value,7);render()};
+['search','group','tour','start'].forEach(id=>$(id).addEventListener(id==='search'?'input':'change',()=>{if(id==='group')$('tour').value='';render()}));
+$('add').onclick=()=>{
+ let t=tours.find(x=>x.id===Number($('editTour').value)),d=$('editDate').value,n=$('total').value;
+ if(!d||n===''||!Number.isInteger(+n)||+n<0){alert('Укажите дату и целое число мест');return}
+ let r={...rec(t,d),added:true,total:+n,free:+n,cancelled:false};
+ store.dates[k(t,d)]=r;save();$('start').value=d;render();
+};
+$('saveDefault').onclick=()=>{
+ let id=$('defaultTour').value,v=$('defaultTotal').value;
+ if(v===''||!Number.isInteger(+v)||+v<0){alert('Укажите вместимость от 0');return}
+ store.defaults[id]=+v;save();render();
+};
+render();
+</script></body></html>
